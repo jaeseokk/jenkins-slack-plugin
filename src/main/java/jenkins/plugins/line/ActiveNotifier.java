@@ -1,4 +1,4 @@
-package jenkins.plugins.slack;
+package jenkins.plugins.line;
 
 import hudson.Util;
 import hudson.model.*;
@@ -16,19 +16,19 @@ import java.util.logging.Logger;
 @SuppressWarnings("rawtypes")
 public class ActiveNotifier implements FineGrainedNotifier {
 
-    private static final Logger logger = Logger.getLogger(SlackListener.class.getName());
+    private static final Logger logger = Logger.getLogger(LineListener.class.getName());
 
-    SlackNotifier notifier;
+    LineNotifier notifier;
 
-    public ActiveNotifier(SlackNotifier notifier) {
+    public ActiveNotifier(LineNotifier notifier) {
         super();
         this.notifier = notifier;
     }
 
-    private SlackService getSlack(AbstractBuild r) {
+    private LineService getLineService(AbstractBuild r) {
         AbstractProject<?, ?> project = r.getProject();
-        String projectRoom = Util.fixEmpty(project.getProperty(SlackNotifier.SlackJobProperty.class).getRoom());
-        return notifier.newSlackService(projectRoom);
+        String accessToken = Util.fixEmpty(project.getProperty(LineNotifier.LineJobProperty.class).getAccessToken());
+        return notifier.newLineService(accessToken);
     }
 
     public void deleted(AbstractBuild r) {
@@ -43,14 +43,15 @@ public class ActiveNotifier implements FineGrainedNotifier {
         } else if (cause != null) {
             MessageBuilder message = new MessageBuilder(notifier, build);
             message.append(cause.getShortDescription());
-            notifyStart(build, message.appendOpenLink().toString());
+            notifyStart(build, "start");
         } else {
             notifyStart(build, getBuildStatusMessage(build));
         }
     }
 
     private void notifyStart(AbstractBuild build, String message) {
-        getSlack(build).publish(message, "green");
+        // getLineService(build).send(message, "green");
+        getLineService(build).send(message);
     }
 
     public void finalized(AbstractBuild r) {
@@ -58,7 +59,7 @@ public class ActiveNotifier implements FineGrainedNotifier {
 
     public void completed(AbstractBuild r) {
         AbstractProject<?, ?> project = r.getProject();
-        SlackNotifier.SlackJobProperty jobProperty = project.getProperty(SlackNotifier.SlackJobProperty.class);
+        LineNotifier.LineJobProperty jobProperty = project.getProperty(LineNotifier.LineJobProperty.class);
         Result result = r.getResult();
         AbstractBuild<?, ?> previousBuild = project.getLastBuild().getPreviousBuild();
         Result previousResult = (previousBuild != null) ? previousBuild.getResult() : Result.SUCCESS;
@@ -68,7 +69,8 @@ public class ActiveNotifier implements FineGrainedNotifier {
                 || (result == Result.SUCCESS && previousResult == Result.FAILURE && jobProperty.getNotifyBackToNormal())
                 || (result == Result.SUCCESS && jobProperty.getNotifySuccess())
                 || (result == Result.UNSTABLE && jobProperty.getNotifyUnstable())) {
-            getSlack(r).publish(getBuildStatusMessage(r), getBuildColor(r));
+            // getLineService(r).send(getBuildStatusMessage(r), getBuildColor(r));
+            getLineService(r).send(getBuildStatusMessage(r));
         }
     }
 
@@ -123,10 +125,10 @@ public class ActiveNotifier implements FineGrainedNotifier {
 
     public static class MessageBuilder {
         private StringBuffer message;
-        private SlackNotifier notifier;
+        private LineNotifier notifier;
         private AbstractBuild build;
 
-        public MessageBuilder(SlackNotifier notifier, AbstractBuild build) {
+        public MessageBuilder(LineNotifier notifier, AbstractBuild build) {
             this.notifier = notifier;
             this.message = new StringBuffer();
             this.build = build;
@@ -145,12 +147,18 @@ public class ActiveNotifier implements FineGrainedNotifier {
             Result result = r.getResult();
             Run previousBuild = r.getProject().getLastBuild().getPreviousBuild();
             Result previousResult = (previousBuild != null) ? previousBuild.getResult() : Result.SUCCESS;
-            if (result == Result.SUCCESS && previousResult == Result.FAILURE) return "Back to normal";
-            if (result == Result.SUCCESS) return "Success";
-            if (result == Result.FAILURE) return "Failure";
-            if (result == Result.ABORTED) return "Aborted";
-            if (result == Result.NOT_BUILT) return "Not built";
-            if (result == Result.UNSTABLE) return "Unstable";
+            if (result == Result.SUCCESS && previousResult == Result.FAILURE)
+                return "Back to normal";
+            if (result == Result.SUCCESS)
+                return "Success";
+            if (result == Result.FAILURE)
+                return "Failure";
+            if (result == Result.ABORTED)
+                return "Aborted";
+            if (result == Result.NOT_BUILT)
+                return "Not built";
+            if (result == Result.UNSTABLE)
+                return "Unstable";
             return "Unknown";
         }
 
@@ -173,7 +181,8 @@ public class ActiveNotifier implements FineGrainedNotifier {
         }
 
         public MessageBuilder appendOpenLink() {
-            String url = notifier.getBuildServerUrl() + build.getUrl();
+            // String url = notifier.getBuildServerUrl() + build.getUrl();
+            String url = build.getUrl();
             message.append(" (<").append(url).append("|Open>)");
             return this;
         }
@@ -184,7 +193,7 @@ public class ActiveNotifier implements FineGrainedNotifier {
             return this;
         }
 
-        public String escape(String string){
+        public String escape(String string) {
             string = string.replace("&", "&amp;");
             string = string.replace("<", "&lt;");
             string = string.replace(">", "&gt;");

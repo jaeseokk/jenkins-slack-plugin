@@ -1,0 +1,30 @@
+{
+    "run": {
+        "default": "",
+        "items": [
+            {
+                "name": "slack",
+                "projectName": "slack",
+                "workingDirectory": "/Users/Naver/workspace/jenkins-slack-plugin",
+                "args": [],
+                "vmargs": [],
+                "env": {},
+                "preLaunchTask": ""
+            }
+        ]
+    },
+    "debug": {
+        "default": "",
+        "items": [
+            {
+                "name": "slack",
+                "projectName": "slack",
+                "workingDirectory": "/Users/Naver/workspace/jenkins-slack-plugin",
+                "args": [],
+                "vmargs": [],
+                "env": {},
+                "preLaunchTask": ""
+            }
+        ]
+    }
+}
